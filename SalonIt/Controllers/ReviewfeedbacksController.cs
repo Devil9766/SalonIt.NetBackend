@@ -41,6 +41,24 @@ namespace SalonIt.Controllers
             return reviewfeedback;
         }
 
+        // GET: api/Reviewfeedbacks/salon/{salonId}
+        [HttpGet("salon/{salonId}")]
+        public async Task<ActionResult<IEnumerable<Reviewfeedback>>> GetReviewsBySalonId(int salonId)
+        {
+            var reviews = await _context.Reviewfeedbacks
+                                        .Where(r => r.SalonId == salonId)
+                                        .OrderByDescending(r => r.CreatedAt) // Latest reviews first
+                                        .ToListAsync();
+
+            if (reviews == null || reviews.Count == 0)
+            {
+                return NotFound(new { message = "No reviews found for this salon." });
+            }
+
+            return Ok(reviews);
+        }
+
+
         // PUT: api/Reviewfeedbacks/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
@@ -71,17 +89,59 @@ namespace SalonIt.Controllers
 
             return NoContent();
         }
-
-        // POST: api/Reviewfeedbacks
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        //Post : api/Reviewfeedbacks/
         [HttpPost]
-        public async Task<ActionResult<Reviewfeedback>> PostReviewfeedback(Reviewfeedback reviewfeedback)
+        public async Task<ActionResult<Reviewfeedback>> PostReviewfeedback([FromBody] Reviewfeedback reviewfeedback)
         {
-            _context.Reviewfeedbacks.Add(reviewfeedback);
-            await _context.SaveChangesAsync();
+            // Check if the request body is null
+            if (reviewfeedback == null)
+            {
+                return BadRequest(new { message = "Invalid request. Review feedback data is required." });
+            }
 
-            return CreatedAtAction("GetReviewfeedback", new { id = reviewfeedback.ReviewId }, reviewfeedback);
+            // Validate ModelState
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // Ensure required fields are not empty
+            if (reviewfeedback.UserId == 0 || reviewfeedback.SalonId == 0 || string.IsNullOrEmpty(reviewfeedback.Feedback))
+            {
+                return BadRequest(new { message = "User ID, Salon ID, and Feedback are required." });
+            }
+
+            // Validate if User and Salon exist in a single query for efficiency
+            var userSalonExist = await _context.Users.AnyAsync(u => u.UserId == reviewfeedback.UserId) &&
+                                 await _context.Salons.AnyAsync(s => s.SalonId == reviewfeedback.SalonId);
+
+            if (!userSalonExist)
+            {
+                return BadRequest(new { message = "Invalid User ID or Salon ID." });
+            }
+
+            // Ensure rating is between 1 and 5
+            if (reviewfeedback.Rating < 1 || reviewfeedback.Rating > 5)
+            {
+                return BadRequest(new { message = "Rating must be between 1 and 5." });
+            }
+
+            // Set createdAt automatically
+            reviewfeedback.CreatedAt = DateTime.UtcNow;
+
+            try
+            {
+                _context.Reviewfeedbacks.Add(reviewfeedback);
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction(nameof(GetReviewfeedback), new { id = reviewfeedback.ReviewId }, reviewfeedback);
+            }
+            catch (DbUpdateException ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while saving the review feedback.", error = ex.Message });
+            }
         }
+
 
         // DELETE: api/Reviewfeedbacks/5
         [HttpDelete("{id}")]

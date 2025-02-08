@@ -125,6 +125,9 @@ namespace SalonIt.Controllers
             return NoContent();
         }
 
+        
+
+
         // POST: api/Users/login
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] User loginUser)
