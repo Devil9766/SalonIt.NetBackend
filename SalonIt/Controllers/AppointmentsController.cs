@@ -98,7 +98,6 @@ namespace SalonIt.Controllers
         }
 
 
-        // DELETE: api/Appointments/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAppointment(int id)
         {
@@ -108,11 +107,24 @@ namespace SalonIt.Controllers
                 return NotFound();
             }
 
+            // Find related payments and remove them first
+            var relatedPayments = _context.Payments.Where(p => p.AppointmentId == id);
+            _context.Payments.RemoveRange(relatedPayments);
+
             _context.Appointments.Remove(appointment);
-            await _context.SaveChangesAsync();
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                return BadRequest(new { message = "Error deleting appointment. Ensure related records are deleted first.", details = ex.Message });
+            }
 
             return NoContent();
         }
+
 
         private bool AppointmentExists(int id)
         {

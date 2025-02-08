@@ -88,11 +88,82 @@ namespace SalonIt.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(user).State = EntityState.Modified;
+            var existingUser = await _context.Users.FindAsync(id);
+            if (existingUser == null)
+            {
+                return NotFound();
+            }
+
+            // Check if the role has changed
+            bool isRoleChanged = existingUser.Role?.ToLower() != user.Role?.ToLower();
+
+            // Store the previous role for deletion
+            string previousRole = existingUser.Role?.ToLower();
+
+            // Update user properties
+            existingUser.FirstName = user.FirstName;
+            existingUser.LastName = user.LastName;
+            existingUser.Contact = user.Contact;
+            existingUser.Email = user.Email;
+            existingUser.Password = user.Password;
+            existingUser.Role = user.Role;
+
+            _context.Entry(existingUser).State = EntityState.Modified;
 
             try
             {
                 await _context.SaveChangesAsync();
+
+                if (isRoleChanged)
+                {
+                    // Remove user from the old role table first
+                    if (previousRole == "admin")
+                    {
+                        var oldAdmin = await _context.Admins.FirstOrDefaultAsync(a => a.Email == existingUser.Email);
+                        if (oldAdmin != null)
+                        {
+                            _context.Admins.Remove(oldAdmin);
+                            await _context.SaveChangesAsync(); // Ensure deletion
+                        }
+                    }
+                    else if (previousRole == "owner")
+                    {
+                        var oldOwner = await _context.Owners.FirstOrDefaultAsync(o => o.Email == existingUser.Email);
+                        if (oldOwner != null)
+                        {
+                            _context.Owners.Remove(oldOwner);
+                            await _context.SaveChangesAsync(); // Ensure deletion
+                        }
+                    }
+
+                    // Add user to the correct role table
+                    if (user.Role?.ToLower() == "admin")
+                    {
+                        var newAdmin = new Admin
+                        {
+                            FirstName = user.FirstName,
+                            LastName = user.LastName,
+                            Contact = user.Contact,
+                            Email = user.Email,
+                            Password = user.Password
+                        };
+                        _context.Admins.Add(newAdmin);
+                    }
+                    else if (user.Role?.ToLower() == "owner")
+                    {
+                        var newOwner = new Owner
+                        {
+                            FirstName = user.FirstName,
+                            LastName = user.LastName,
+                            Contact = user.Contact,
+                            Email = user.Email,
+                            Password = user.Password
+                        };
+                        _context.Owners.Add(newOwner);
+                    }
+
+                    await _context.SaveChangesAsync(); // Save new role assignment
+                }
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -108,6 +179,8 @@ namespace SalonIt.Controllers
 
             return NoContent();
         }
+
+
 
         // DELETE: api/Users/5
         [HttpDelete("{id}")]

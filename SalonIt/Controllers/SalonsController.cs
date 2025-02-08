@@ -83,6 +83,14 @@ namespace SalonIt.Controllers
             return CreatedAtAction("GetSalon", new { id = salon.SalonId }, salon);
         }
 
+        // GET: api/Salons/owner/{ownerId}
+        [HttpGet("owner/{ownerId}")]
+        public async Task<ActionResult<IEnumerable<Salon>>> GetSalonsByOwner(int ownerId)
+        {
+            return await _context.Salons.Where(s => s.OwnerId == ownerId).ToListAsync();
+        }
+
+
         // DELETE: api/Salons/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSalon(int id)

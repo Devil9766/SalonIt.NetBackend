@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SalonIt.Models;
@@ -20,14 +18,15 @@ namespace SalonIt.Controllers
             _context = context;
         }
 
-        // GET: api/Services
+        // ✅ GET ALL SERVICES
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Service>>> GetServices()
         {
-            return await _context.Services.ToListAsync();
+            var services = await _context.Services.ToListAsync();
+            return Ok(services);
         }
 
-        // GET: api/Services/5
+        // ✅ GET SERVICE BY ID
         [HttpGet("{id}")]
         public async Task<ActionResult<Service>> GetService(int id)
         {
@@ -35,20 +34,45 @@ namespace SalonIt.Controllers
 
             if (service == null)
             {
-                return NotFound();
+                return NotFound(new { message = "Service not found" });
             }
 
-            return service;
+            return Ok(service);
         }
 
-        // PUT: api/Services/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        // ✅ GET SERVICES BY SALON ID
+        [HttpGet("salon/{salonId}")]
+        public async Task<ActionResult<IEnumerable<Service>>> GetServicesBySalon(int salonId)
+        {
+            var services = await _context.Services
+                .Where(s => s.SalonId == salonId)
+                .ToListAsync();
+
+            return Ok(services); // Return empty list if no services exist
+        }
+
+        // ✅ CREATE NEW SERVICE
+        [HttpPost]
+        public async Task<ActionResult<Service>> PostService([FromBody] Service service)
+        {
+            if (service == null)
+            {
+                return BadRequest(new { message = "Invalid service data" });
+            }
+
+            _context.Services.Add(service);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetService), new { id = service.ServiceId }, service);
+        }
+
+        // ✅ UPDATE SERVICE
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutService(int id, Service service)
+        public async Task<IActionResult> PutService(int id, [FromBody] Service service)
         {
             if (id != service.ServiceId)
             {
-                return BadRequest();
+                return BadRequest(new { message = "Service ID mismatch" });
             }
 
             _context.Entry(service).State = EntityState.Modified;
@@ -61,63 +85,31 @@ namespace SalonIt.Controllers
             {
                 if (!ServiceExists(id))
                 {
-                    return NotFound();
+                    return NotFound(new { message = "Service not found" });
                 }
-                else
-                {
-                    throw;
-                }
+                throw;
             }
 
             return NoContent();
         }
 
-        // POST: api/Services
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<Service>> PostService(Service service)
-        {
-            _context.Services.Add(service);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetService", new { id = service.ServiceId }, service);
-        }
-
-
-        // GET: api/Services/salon/1
-        [HttpGet("salon/{salonId}")]
-        public async Task<ActionResult<IEnumerable<Service>>> GetServicesBySalon(int salonId)
-        {
-            var services = await _context.Services
-                .Where(s => s.SalonId == salonId)
-                .ToListAsync();
-
-            if (services == null || services.Count == 0)
-            {
-                return NotFound(new { message = "No services found for the given salon ID" });
-            }
-
-            return Ok(services);
-        }
-
-
-
-        // DELETE: api/Services/5
+        // ✅ DELETE SERVICE
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteService(int id)
         {
             var service = await _context.Services.FindAsync(id);
             if (service == null)
             {
-                return NotFound();
+                return NotFound(new { message = "Service not found" });
             }
 
             _context.Services.Remove(service);
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(new { message = "Service deleted successfully" });
         }
 
+        // ✅ CHECK IF SERVICE EXISTS
         private bool ServiceExists(int id)
         {
             return _context.Services.Any(e => e.ServiceId == id);
