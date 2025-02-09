@@ -97,6 +97,33 @@ namespace SalonIt.Controllers
             return CreatedAtAction(nameof(GetAppointments), appointments);
         }
 
+        [HttpPatch]
+        public async Task<IActionResult> UpdateAppointmentsStatus([FromBody] List<int> appointmentIds)
+        {
+            if (appointmentIds == null || appointmentIds.Count == 0)
+            {
+                return BadRequest("No appointments selected.");
+            }
+
+            var appointments = await _context.Appointments
+                                             .Where(a => appointmentIds.Contains(a.AppointmentId))
+                                             .ToListAsync();
+
+            if (appointments.Count == 0)
+            {
+                return NotFound("Appointments not found.");
+            }
+
+            foreach (var appointment in appointments)
+            {
+                appointment.Status = "Confirmed";
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Appointments updated successfully." });
+        }
+
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAppointment(int id)

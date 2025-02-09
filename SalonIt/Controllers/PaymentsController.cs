@@ -99,7 +99,7 @@ namespace SalonIt.Controllers
                         AppointmentId = appointment.AppointmentId,
                         Amount = appointment.Price, // Use the price sent from the frontend
                         PaymentDate = DateTime.UtcNow,
-                        PaymentMethod = paymentDto.PaymentMethod ?? "Unknown"
+                        PaymentMethod = paymentDto.Method ?? "Unknown"
                     };
 
                     _context.Payments.Add(payment);
@@ -143,7 +143,7 @@ namespace SalonIt.Controllers
     public class PaymentRequestDto
     {
         public int? UserId { get; set; }
-        public string? PaymentMethod { get; set; }
+        public string? Method { get; set; }
         public List<AppointmentPaymentDto> Appointments { get; set; } = new();
     }
 
@@ -151,6 +151,7 @@ namespace SalonIt.Controllers
     {
         public int? AppointmentId { get; set; }
         public decimal? Price { get; set; }
+        public string? Method { get; set; }
     }
 
 }
